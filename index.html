@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111111">
+<title>Mi Entrenamiento</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="theme-color" content="#111111">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="icon" href="./icon-192.png">
+
+<style>
+:root{--bg:#0d0d0f;--card:#18181b;--muted:#a1a1aa;--text:#f5f5f5;--accent:#7dd3fc;--ok:#86efac;--line:#29292e}
+*{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+header{padding:28px 20px 18px;background:linear-gradient(180deg,#171717,#0d0d0f)}
+h1{margin:0 0 5px;font-size:28px}.sub{color:var(--muted);font-size:14px}
+main{padding:0 16px 90px;max-width:650px;margin:auto}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:17px;margin:14px 0}
+.title{font-size:20px;font-weight:750;margin-bottom:5px}.muted{color:var(--muted)}
+.exercise{display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--line)}
+.exercise:last-child{border-bottom:0}.exercise input{width:22px;height:22px;accent-color:var(--ok)}
+.exercise.done .ename{text-decoration:line-through;color:#777}.ename{font-weight:650}.sets{font-size:13px;color:var(--muted);margin-top:3px}
+button{border:0;border-radius:12px;padding:11px 14px;background:#27272a;color:white;font-weight:700}
+button.primary{background:#e5e7eb;color:#111}.row{display:flex;gap:8px;flex-wrap:wrap}
+.progress{height:9px;background:#27272a;border-radius:99px;overflow:hidden;margin:12px 0}.bar{height:100%;background:var(--ok);width:0}
+nav{position:fixed;bottom:0;left:0;right:0;background:#151517ee;backdrop-filter:blur(10px);border-top:1px solid var(--line);display:flex;justify-content:center;gap:8px;padding:10px 12px calc(10px + env(safe-area-inset-bottom));z-index:3}
+nav button{background:transparent;color:var(--muted);flex:1;max-width:180px}.active{color:white!important;background:#29292d!important}
+.hidden{display:none}.pill{display:inline-block;padding:5px 9px;border-radius:99px;background:#27272a;color:#d4d4d8;font-size:12px}
+.small{font-size:13px}.streak{font-size:32px;font-weight:800}
+input[type=time]{background:#27272a;color:white;border:1px solid #3f3f46;border-radius:10px;padding:9px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Mi Entrenamiento 💪</h1>
+  <div class="sub" id="date"></div>
+</header>
+<main>
+<section id="home">
+  <div class="card">
+    <div class="pill" id="todayPill"></div>
+    <div class="title" id="todayTitle"></div>
+    <div class="muted" id="todayDesc"></div>
+    <div class="progress"><div class="bar" id="bar"></div></div>
+    <div class="small" id="count"></div>
+    <div class="row" style="margin-top:14px">
+      <button class="primary" onclick="openToday()">Empezar entrenamiento</button>
+      <button onclick="resetToday()">Reiniciar</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="muted">Racha registrada</div>
+    <div class="streak"><span id="streak">0</span> días</div>
+    <div class="small muted">Se suma cuando completas una rutina.</div>
+  </div>
+  <div class="card">
+    <div class="title">Recordatorio</div>
+    <div class="muted small">Elige una hora. Esta versión guarda la hora; las notificaciones automáticas en segundo plano requieren instalarla como PWA en un navegador compatible.</div>
+    <div class="row" style="margin-top:10px"><input type="time" id="reminder"><button onclick="saveReminder()">Guardar hora</button></div>
+    <div class="small" id="reminderMsg" style="margin-top:8px"></div>
+  </div>
+</section>
+
+<section id="workout" class="hidden">
+  <div class="card">
+    <div class="title" id="workoutTitle"></div>
+    <div class="muted" id="workoutSub"></div>
+  </div>
+  <div class="card" id="exerciseList"></div>
+  <button class="primary" style="width:100%" onclick="finishWorkout()">Terminé la rutina</button>
+</section>
+
+<section id="routines" class="hidden">
+  <div class="card"><div class="title">Tren superior</div><div class="muted">Lunes y viernes</div><div id="upperList"></div></div>
+  <div class="card"><div class="title">Piernas + abdomen</div><div class="muted">Miércoles y domingo</div><div id="lowerList"></div></div>
+</section>
+
+<section id="progress" class="hidden">
+  <div class="card">
+    <div class="title">Progreso</div>
+    <div class="muted">Esta versión guarda tus entrenamientos en este dispositivo.</div>
+    <div style="margin-top:14px" class="small">Entrenamientos completados: <b id="completed"></b></div>
+    <div style="margin-top:8px" class="small">Última rutina: <b id="lastWorkout"></b></div>
+  </div>
+</section>
+</main>
+
+<nav>
+<button id="navHome" class="active" onclick="show('home',this)">Inicio</button>
+<button onclick="show('routines',this)">Rutinas</button>
+<button onclick="show('progress',this)">Progreso</button>
+</nav>
+
+<script>
+const upper=[
+["Flexión Declinada","4 series × 15 reps"],["Flexión De Pica","2 series × 10 reps"],
+["Curl De Muñeca (Mancuerna)","3 series × 15 reps"],["Curl De Bíceps (Barra EZ)","4 series × 12 reps"],
+["Remo A Una Mano (Mancuerna)","2 series × 15 reps"],["Fondos En Banco","4 series × 15 reps"],
+["Crunch De Codo A Rodilla","4 series × 20 reps"],["Crunch Abdominal Brazos Cruzados","4 series × 15 reps"]
+];
+const lower=[
+["Crunch De Codo A Rodilla","4 series × 20 reps"],["Crunch Abdominal Brazos Cruzados","4 series × 15 reps"],
+["Crunch Abdominal Rodillas Elevadas Tumbado","4 series × 10 reps"],["Abdominales de Bicicleta","3 series × 15 reps"],
+["Escalador Cruzado (Mountain Climbers)","3 series × 30 reps"],["Sentadilla Búlgara Sin Peso","4 series × 15 reps"],
+["Sentadilla Con Salto","3 series × 10 reps"],["Zancada Con Salto","3 series × 10 reps"],
+["Sentadilla Sin Peso","4 series × 10 reps"],["Elevación De Talones De Pie Bilateral","3 series × 30 reps"],
+["Plancha (Con Peso)","1 serie × 1 min"]
+];
+
+const key='myWorkoutAppV1';
+let state=JSON.parse(localStorage.getItem(key)||'{"done":{},"completed":0,"streak":9,"lastWorkout":"","reminder":""}');
+const day=new Date().getDay(); // 0 Sun, 1 Mon...
+const isUpper=(day===1||day===5);
+const today= isUpper ? upper : lower;
+const todayName=isUpper?'Tren superior':'Piernas + abdomen';
+
+function save(){localStorage.setItem(key,JSON.stringify(state));}
+function fmtDate(){return new Intl.DateTimeFormat('es-ES',{weekday:'long',day:'numeric',month:'long'}).format(new Date());}
+document.getElementById('date').textContent=fmtDate();
+document.getElementById('todayPill').textContent=isUpper?'HOY · TREN SUPERIOR':'HOY · PIERNAS + ABDOMEN';
+document.getElementById('todayTitle').textContent=todayName;
+document.getElementById('todayDesc').textContent=(day===2||day===4||day===6)?'Hoy es día de recuperación. Si quieres, puedes descansar o hacer actividad suave.':'Tu rutina programada para hoy.';
+
+function renderToday(){
+ const list=document.getElementById('exerciseList'); list.innerHTML='';
+ let done=0;
+ today.forEach((e,i)=>{
+  const d=!!state.done[i];
+  if(d)done++;
+  const div=document.createElement('label'); div.className='exercise '+(d?'done':'');
+  div.innerHTML=`<input type="checkbox" ${d?'checked':''}><div><div class="ename">${e[0]}</div><div class="sets">${e[1]}</div></div>`;
+  div.querySelector('input').onchange=(ev)=>{state.done[i]=ev.target.checked;save();renderToday();};
+  list.appendChild(div);
+ });
+ document.getElementById('bar').style.width=(done/today.length*100)+'%';
+ document.getElementById('count').textContent=`${done} de ${today.length} ejercicios completados`;
+ document.getElementById('streak').textContent=state.streak||0;
+}
+function openToday(){show('workout',null);renderToday();}
+function finishWorkout(){
+ if(!today.every((_,i)=>state.done[i])){alert('Completa todos los ejercicios para marcar la rutina como terminada.');return;}
+ state.completed=(state.completed||0)+1; state.streak=(state.streak||0)+1; state.lastWorkout=fmtDate(); save(); alert('¡Rutina completada! Buen trabajo.'); renderAll();
+}
+function resetToday(){state.done={};save();renderToday();}
+function renderRoutines(){
+ const make=(arr)=>arr.map(e=>`<div class="exercise"><div><div class="ename">${e[0]}</div><div class="sets">${e[1]}</div></div></div>`).join('');
+ document.getElementById('upperList').innerHTML=make(upper);
+ document.getElementById('lowerList').innerHTML=make(lower);
+}
+function renderProgress(){
+ document.getElementById('completed').textContent=state.completed||0;
+ document.getElementById('lastWorkout').textContent=state.lastWorkout||'Todavía no hay registros';
+}
+function renderAll(){renderToday();renderRoutines();renderProgress();}
+function show(id,btn){
+ ['home','workout','routines','progress'].forEach(x=>document.getElementById(x).classList.add('hidden'));
+ document.getElementById(id).classList.remove('hidden');
+ document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));
+ if(btn)btn.classList.add('active');
+}
+function saveReminder(){
+ const v=document.getElementById('reminder').value; state.reminder=v;save();
+ document.getElementById('reminderMsg').textContent=v?`Hora guardada: ${v}`:'Sin hora configurada.';
+}
+if(state.reminder){document.getElementById('reminder').value=state.reminder;document.getElementById('reminderMsg').textContent=`Hora guardada: ${state.reminder}`;}
+renderAll();
+</script>
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", function () {
+    navigator.serviceWorker.register("./sw.js");
+  });
+}
+</script>
+</body>
+</html>
